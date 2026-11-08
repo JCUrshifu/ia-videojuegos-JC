@@ -65,3 +65,10 @@ class ResenaActualizar(BaseModel):
 class ChatPregunta(BaseModel):
     pregunta: str = Field(min_length=2, max_length=1000)
     conversacion_id: Optional[int] = None
+
+
+class AgentePeticion(BaseModel):
+    solicitud: str = Field(min_length=5, max_length=1000)
+
+class AgentePeticion(BaseModel):
+    solicitud: str = Field(min_length=2, max_length=1000)
