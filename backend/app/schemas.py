@@ -60,3 +60,8 @@ class ResenaActualizar(BaseModel):
     autor: Optional[str] = Field(default=None, min_length=1, max_length=80)
     puntuacion: Optional[int] = Field(default=None, ge=1, le=5)
     comentario: Optional[str] = None
+
+
+class ChatPregunta(BaseModel):
+    pregunta: str = Field(min_length=2, max_length=1000)
+    conversacion_id: Optional[int] = None
