@@ -1,0 +1,641 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Asistente de Videojuegos con IA</title>
+<style>
+:root{--bg:#f3f4f8;--card:#fff;--ink:#1f2937;--muted:#6b7280;--brand:#4f46e5;--line:#e5e7eb;--ok:#15803d;--bad:#b91c1c}
+*{box-sizing:border-box}
+body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--ink);font-size:15px}
+.hidden{display:none!important}
+.center{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:16px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px;margin-bottom:16px;box-shadow:0 1px 2px rgba(0,0,0,.04)}
+.login{width:100%;max-width:380px}
+h1{font-size:22px;margin:0 0 4px} h2{margin:0 0 4px} h3{margin:0 0 10px;font-size:16px}
+label{display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--muted);margin-bottom:10px}
+input,select,textarea{font:inherit;padding:8px 10px;border:1px solid #cbd5e1;border-radius:8px;background:#fff;color:var(--ink);width:100%}
+textarea{resize:vertical}
+button{font:inherit;padding:8px 14px;border:0;border-radius:8px;background:var(--brand);color:#fff;cursor:pointer}
+button:hover{filter:brightness(1.08)} button:disabled{opacity:.5;cursor:wait}
+button.ghost{background:#eef0ff;color:var(--brand)}
+button.danger{background:#fee2e2;color:var(--bad)}
+header{display:flex;align-items:center;gap:12px;padding:10px 18px;background:#1e1b4b;color:#fff}
+header .brand{font-weight:700;flex:1}
+header button{background:#312e81}
+.layout{display:grid;grid-template-columns:250px 1fr;min-height:calc(100vh - 52px)}
+nav{background:#fff;border-right:1px solid var(--line);padding:12px}
+nav h4{margin:14px 6px 6px;font-size:11px;text-transform:uppercase;color:var(--muted);letter-spacing:.05em}
+nav button{display:block;width:100%;text-align:left;background:transparent;color:var(--ink);padding:9px 10px;margin-bottom:2px}
+nav button.active{background:#eef0ff;color:var(--brand);font-weight:600}
+main{padding:20px;max-width:1100px;width:100%}
+.muted{color:var(--muted)} .small{font-size:12px} .bad{color:var(--bad)}
+.row{display:flex;gap:8px;align-items:center} .between{justify-content:space-between;margin-top:10px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:0 12px;align-items:end}
+.grid .full{grid-column:1/-1} .actions{display:flex;gap:8px;margin-bottom:10px}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{padding:7px 8px;border-bottom:1px solid var(--line);text-align:left;vertical-align:middle}
+th{color:var(--muted);font-weight:600;background:#fafafa}
+td input,td select{padding:5px 7px}
+.table-wrap{overflow-x:auto}
+.msgs{height:380px;overflow-y:auto;display:flex;flex-direction:column;gap:8px;padding:8px;background:#f8fafc;border-radius:10px;margin-bottom:10px}
+.msg{max-width:82%;padding:9px 12px;border-radius:12px;line-height:1.45}
+.msg.me{align-self:flex-end;background:var(--brand);color:#fff}
+.msg.bot{align-self:flex-start;background:#fff;border:1px solid var(--line)}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0;font-size:12px}
+.chip{background:#eef0ff;color:#3730a3;padding:3px 9px;border-radius:999px}
+button.chip{border:0;cursor:pointer;text-align:left}
+.warn{background:#fef3c7;color:#92400e;padding:6px 10px;border-radius:8px;margin-top:8px;font-size:13px}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:16px}
+.kpi{background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px} .kpi b{display:block;font-size:22px}
+.bar{height:8px;background:#e5e7eb;border-radius:99px;overflow:hidden;min-width:80px} .bar i{display:block;height:100%;background:var(--brand)}
+.veredicto{font-size:16px} .okbox{border-color:#86efac;background:#f0fdf4} .badbox{border-color:#fca5a5;background:#fef2f2}
+details{border:1px solid var(--line);border-radius:8px;padding:6px 10px;margin-bottom:6px;background:#fafafa}
+summary{cursor:pointer}
+pre{background:#0f172a;color:#e2e8f0;padding:10px;border-radius:8px;overflow:auto;max-height:240px;font-size:12px;margin:4px 0 8px}
+.err{border-color:#fca5a5;background:#fef2f2;color:var(--bad)}
+.tag{font-size:10px;background:#fee2e2;color:var(--bad);padding:1px 6px;border-radius:99px}
+#toast{position:fixed;right:16px;bottom:16px;padding:10px 14px;border-radius:10px;color:#fff;opacity:0;transition:.2s;z-index:9;max-width:360px;pointer-events:none}
+#toast.show{opacity:1} #toast.ok{background:#15803d} #toast.error{background:#b91c1c}
+@media(max-width:800px){.layout{grid-template-columns:1fr}nav{border-right:0;border-bottom:1px solid var(--line)}}
+</style>
+</head>
+<body>
+<div id="toast"></div>
+
+<section id="login" class="center">
+  <form id="loginForm" class="card login">
+    <h1>🎮 Asistente de Videojuegos con IA</h1>
+    <p class="muted">Inicia sesión para usar el chatbot y los agentes de IA.</p>
+    <label>Correo<input id="lemail" type="email" required autocomplete="username"></label>
+    <label>Contraseña<input id="lpass" type="password" required autocomplete="current-password"></label>
+    <button id="lbtn" style="width:100%">Entrar</button>
+    <p id="lerr" class="bad small"></p>
+  </form>
+</section>
+
+<div id="app" class="hidden">
+  <header>
+    <div class="brand">🎮 Asistente de Videojuegos con IA</div>
+    <span id="who" class="small"></span>
+    <button id="logout">Cerrar sesión</button>
+  </header>
+  <div class="layout">
+    <nav id="nav"></nav>
+    <main id="main"></main>
+  </div>
+</div>
+
+<script>
+const $ = (s, el = document) => el.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const rich = s => esc(s).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>').replace(/\n/g, '<br>');
+const fmt = n => Number(n || 0).toLocaleString('es-GT');
+const money = n => '$' + Number(n || 0).toFixed(2);
+const pre = o => '<pre>' + esc(JSON.stringify(o, null, 2).slice(0, 3000)) + '</pre>';
+function fechaTxt(s) {
+  if (!s) return '';
+  s = String(s);
+  if (/(Z|[+-]\d\d:?\d\d)$/.test(s)) {
+    const d = new Date(s);
+    if (!isNaN(d)) return d.toLocaleString('es-GT', {timeZone: 'America/Guatemala'});
+  }
+  return s.replace('T', ' ').slice(0, 19);
+}
+function qs(obj) {
+  const p = new URLSearchParams();
+  for (const [k, v] of Object.entries(obj)) if (v !== '' && v !== null && v !== undefined) p.set(k, v);
+  const s = p.toString();
+  return s ? '?' + s : '';
+}
+
+const SVC_VIEW = {chatbot_rag: 'chat', agente_presupuesto: 'presupuesto', agente_alternativas: 'alternativas'};
+const SVC_LABEL = {chatbot_rag: 'Chatbot RAG', agente_presupuesto: 'Agente de presupuesto', agente_alternativas: 'Agente de alternativas'};
+let token = localStorage.getItem('token');
+let user = null;
+let servicios = [];
+const VIEWS = {};
+const main = $('#main');
+
+function toast(msg, tipo) {
+  const t = $('#toast');
+  t.textContent = msg;
+  t.className = 'show ' + (tipo || 'ok');
+  clearTimeout(toast.h);
+  toast.h = setTimeout(() => t.className = '', 4500);
+}
+
+async function api(method, path, body, form) {
+  const headers = {};
+  if (token) headers['Authorization'] = 'Bearer ' + token;
+  const opts = {method, headers};
+  if (form) {
+    headers['Content-Type'] = 'application/x-www-form-urlencoded';
+    opts.body = new URLSearchParams(form);
+  } else if (body !== undefined) {
+    headers['Content-Type'] = 'application/json';
+    opts.body = JSON.stringify(body);
+  }
+  let r;
+  try { r = await fetch(path, opts); }
+  catch (e) { throw new Error('No se pudo conectar con el servidor'); }
+  let data = null;
+  try { data = await r.json(); } catch (e) {}
+  if (r.status === 401 && token) { cerrarLocal(); throw new Error('Tu sesión expiró. Inicia sesión de nuevo.'); }
+  if (!r.ok) {
+    let msg = data && data.detail;
+    if (Array.isArray(msg)) msg = msg.map(m => (m.loc || []).slice(1).join('.') + ': ' + m.msg).join('; ');
+    throw new Error(msg || ('Error ' + r.status));
+  }
+  return data;
+}
+
+/* ---------- sesión ---------- */
+function cerrarLocal() {
+  token = null; user = null;
+  localStorage.removeItem('token');
+  $('#app').classList.add('hidden');
+  $('#login').classList.remove('hidden');
+}
+$('#logout').onclick = async () => {
+  try { await api('POST', '/auth/logout'); } catch (e) {}
+  cerrarLocal();
+};
+$('#loginForm').onsubmit = async e => {
+  e.preventDefault();
+  $('#lerr').textContent = '';
+  $('#lbtn').disabled = true;
+  try {
+    const d = await api('POST', '/auth/login', undefined, {username: $('#lemail').value.trim(), password: $('#lpass').value});
+    token = d.access_token;
+    localStorage.setItem('token', token);
+    user = await api('GET', '/auth/me');
+    $('#lpass').value = '';
+    await mostrarApp();
+  } catch (err) {
+    $('#lerr').textContent = err.message;
+  }
+  $('#lbtn').disabled = false;
+};
+
+async function mostrarApp() {
+  $('#login').classList.add('hidden');
+  $('#app').classList.remove('hidden');
+  $('#who').textContent = user.nombre + ' (' + user.rol + ')';
+  await cargarServicios();
+  const primero = $('#nav button');
+  if (primero) go(primero.dataset.id);
+}
+async function cargarServicios() {
+  servicios = await api('GET', '/servicios');
+  buildNav();
+}
+function svcName(code) {
+  const s = servicios.find(x => x.codigo === code);
+  return s ? s.nombre : SVC_LABEL[code];
+}
+function svcOptions() {
+  return '<option value="">Todos</option>' + Object.entries(SVC_LABEL).map(([k, v]) => `<option value="${k}">${v}</option>`).join('');
+}
+function buildNav() {
+  let h = '<h4>Servicios de IA</h4>';
+  for (const s of servicios) {
+    const id = SVC_VIEW[s.codigo];
+    if (!id) continue;
+    if (!s.activo && user.rol !== 'admin') continue;
+    h += `<button data-id="${id}">${esc(s.nombre)}${s.activo ? '' : ' <span class="tag">desactivado</span>'}</button>`;
+  }
+  h += '<h4>Mi actividad</h4><button data-id="historial">Historial de conversaciones</button>';
+  h += `<button data-id="consumo">${user.rol === 'admin' ? 'Reporte de uso general' : 'Mi consumo de tokens'}</button>`;
+  if (user.rol === 'admin') {
+    h += '<h4>Administración</h4><button data-id="usuarios">Usuarios y límites</button><button data-id="servicios">Servicios de IA</button><button data-id="catalogo">Catálogo de videojuegos</button>';
+  }
+  $('#nav').innerHTML = h;
+}
+$('#nav').addEventListener('click', e => {
+  const b = e.target.closest('button[data-id]');
+  if (b) go(b.dataset.id);
+});
+async function go(id) {
+  document.querySelectorAll('#nav button').forEach(b => b.classList.toggle('active', b.dataset.id === id));
+  main.innerHTML = '<p class="muted">Cargando…</p>';
+  try { await VIEWS[id](); }
+  catch (e) { main.innerHTML = `<div class="card err">${esc(e.message)}</div>`; }
+}
+
+/* ---------- chatbot RAG ---------- */
+VIEWS.chat = async function () {
+  let convId = null;
+  main.innerHTML = `
+    <h2>${esc(svcName('chatbot_rag'))}</h2>
+    <p class="muted">Responde con la información del catálogo (RAG), cita sus fuentes y recuerda la conversación.</p>
+    <div class="card">
+      <div id="msgs" class="msgs"><div class="msg bot">¡Hola! Pregúntame sobre los videojuegos del catálogo: géneros, plataformas, precios o reseñas.</div></div>
+      <form id="cf" class="row">
+        <input id="q" placeholder="Escribe tu pregunta…" maxlength="1000" minlength="2" required autocomplete="off">
+        <button id="cs">Enviar</button>
+      </form>
+      <div class="row between">
+        <button type="button" class="ghost" id="cn">Nueva conversación</button>
+        <span id="ct" class="muted small"></span>
+      </div>
+    </div>`;
+  const msgs = $('#msgs');
+  const add = (cls, html) => {
+    const d = document.createElement('div');
+    d.className = 'msg ' + cls;
+    d.innerHTML = html;
+    msgs.appendChild(d);
+    msgs.scrollTop = msgs.scrollHeight;
+    return d;
+  };
+  $('#cn').onclick = () => {
+    convId = null;
+    msgs.innerHTML = '';
+    add('bot', 'Nueva conversación iniciada.');
+    $('#ct').textContent = '';
+  };
+  $('#cf').onsubmit = async e => {
+    e.preventDefault();
+    const q = $('#q').value.trim();
+    if (q.length < 2) return;
+    $('#q').value = '';
+    add('me', esc(q));
+    const w = add('bot', '<span class="muted">Pensando…</span>');
+    $('#cs').disabled = true;
+    try {
+      const r = await api('POST', '/ia/chatbot', {pregunta: q, conversacion_id: convId});
+      convId = r.conversacion_id;
+      let h = rich(r.respuesta);
+      if (!r.informacion_suficiente) h += '<div class="warn">⚠ El catálogo no tiene información suficiente sobre esta pregunta.</div>';
+      if (r.fuentes && r.fuentes.length) h += '<div class="chips">Fuentes: ' + r.fuentes.map(f => `<span class="chip">[ID ${f.id}] ${esc(f.titulo)}</span>`).join('') + '</div>';
+      w.innerHTML = h;
+      $('#ct').textContent = `Conversación #${convId} · tokens usados: ${fmt(r.tokens.total)} · restantes: ${fmt(r.tokens_restantes)}`;
+    } catch (err) {
+      w.innerHTML = `<span class="bad">${esc(err.message)}</span>`;
+    }
+    $('#cs').disabled = false;
+    $('#q').focus();
+  };
+};
+
+/* ---------- agentes ---------- */
+function tablaJuegos(lista, conValoracion) {
+  return `<div class="table-wrap"><table><tr><th>ID</th><th>Título</th><th>Género</th><th>Plataforma</th><th>Precio</th><th>Stock</th>${conValoracion ? '<th>Valoración</th>' : ''}</tr>` +
+    lista.map(j => `<tr><td>${j.id}</td><td>${esc(j.titulo)}</td><td>${esc(j.genero)}</td><td>${esc(j.plataforma)}</td><td>${money(j.precio)}</td><td>${j.stock}</td>${conValoracion ? `<td>${j.promedio ?? '—'}${j.total_resenas ? ' (' + j.total_resenas + ')' : ''}</td>` : ''}</tr>`).join('') +
+    '</table></div>';
+}
+function ultimoPaso(pasos, herramienta) {
+  return [...pasos].reverse().find(p => p.herramienta === herramienta && p.resultado && !p.resultado.error);
+}
+function renderAgente(r) {
+  let h = '';
+  const cmp = ultimoPaso(r.pasos, 'comparar_con_presupuesto');
+  if (cmp) {
+    const c = cmp.resultado;
+    h += `<div class="card veredicto ${c.alcanza ? 'okbox' : 'badbox'}"><b>${c.alcanza ? '✅ Alcanza' : '❌ No alcanza'}</b> — Total ${money(c.total)} · Presupuesto ${money(c.presupuesto)} · ${c.diferencia >= 0 ? 'Sobran' : 'Faltan'} ${money(Math.abs(c.diferencia))}</div>`;
+  }
+  const tot = ultimoPaso(r.pasos, 'calcular_total');
+  if (tot && tot.resultado.juegos) h += `<div class="card"><h3>Juegos considerados</h3>${tablaJuegos(tot.resultado.juegos)}</div>`;
+  const alt = ultimoPaso(r.pasos, 'buscar_alternativas_catalogo');
+  if (alt && alt.resultado.alternativas && alt.resultado.alternativas.length) h += `<div class="card"><h3>Alternativas encontradas en el catálogo</h3>${tablaJuegos(alt.resultado.alternativas, true)}</div>`;
+  h += `<div class="card"><h3>Respuesta del agente</h3><div>${rich(r.respuesta)}</div></div>`;
+  h += `<div class="card"><h3>Pasos que siguió el agente (${r.pasos.length})</h3>`;
+  h += r.pasos.length ? r.pasos.map(p => `<details><summary><b>Paso ${p.paso}:</b> ${esc(p.herramienta)}(${esc(JSON.stringify(p.argumentos).slice(0, 90))})</summary><div class="small muted">Argumentos</div>${pre(p.argumentos)}<div class="small muted">Resultado</div>${pre(p.resultado)}</details>`).join('') : '<p class="muted">El agente respondió sin usar herramientas.</p>';
+  h += '</div>';
+  if (r.fuentes && r.fuentes.length) {
+    h += '<div class="chips">Fuentes: ' + r.fuentes.map(f => f.tipo === 'externa' ? `<span class="chip">🌐 ${esc(f.fuente)}: ${esc(f.detalle)}</span>` : `<span class="chip">[ID ${f.id}] ${esc(f.titulo)}</span>`).join('') + '</div>';
+  }
+  h += `<p class="muted small">Conversación #${r.conversacion_id} · tokens: ${fmt(r.tokens.total)} (entrada ${fmt(r.tokens.entrada)}, salida ${fmt(r.tokens.salida)}) · restantes: ${fmt(r.tokens_restantes)}</p>`;
+  return h;
+}
+function viewAgente(codigo, endpoint, ejemplos, ayuda) {
+  return async function () {
+    main.innerHTML = `
+      <h2>${esc(svcName(codigo))}</h2>
+      <p class="muted">${ayuda}</p>
+      <div class="card">
+        <form id="af">
+          <textarea id="as" rows="3" maxlength="1000" minlength="5" required placeholder="Describe tu solicitud…"></textarea>
+          <div class="chips">Ejemplos: ${ejemplos.map((e, i) => `<button type="button" class="chip" data-i="${i}">${esc(e.slice(0, 70))}…</button>`).join('')}</div>
+          <button id="ab">Ejecutar agente</button>
+        </form>
+      </div>
+      <div id="ar"></div>`;
+    document.querySelectorAll('.chip[data-i]').forEach(b => b.onclick = () => { $('#as').value = ejemplos[b.dataset.i]; });
+    $('#af').onsubmit = async e => {
+      e.preventDefault();
+      $('#ab').disabled = true;
+      $('#ar').innerHTML = '<div class="card muted">El agente está trabajando… (puede tardar unos segundos)</div>';
+      try {
+        const r = await api('POST', endpoint, {solicitud: $('#as').value.trim()});
+        $('#ar').innerHTML = renderAgente(r);
+      } catch (err) {
+        $('#ar').innerHTML = `<div class="card err">${esc(err.message)}</div>`;
+      }
+      $('#ab').disabled = false;
+    };
+  };
+}
+VIEWS.presupuesto = viewAgente('agente_presupuesto', '/ia/agente-presupuesto', [
+  'Quiero comprar Elden Ring, Hades y Stardew Valley. Tengo un presupuesto de $90.',
+  'Quiero Minecraft y Terraria, tengo $50',
+  'Quiero Fortnite y Hades con $40'
+], 'Dime qué juegos quieres y cuánto dinero tienes: busca cada juego, calcula el total real y lo compara con tu presupuesto.');
+VIEWS.alternativas = viewAgente('agente_alternativas', '/ia/agente-alternativas', [
+  'No me alcanza para Elden Ring, mi presupuesto es $25. ¿Qué alternativas parecidas me recomiendas?',
+  'Quiero algo parecido a Stardew Valley que cueste menos de $12 y dime si hay ofertas externas del mejor candidato.'
+], 'Busca opciones más económicas en el catálogo, compara sus reseñas y consulta fuentes externas (CheapShark y Wikipedia).');
+
+/* ---------- historial ---------- */
+function mensajesHtml(c) {
+  return `<div class="card"><h3>${esc(c.titulo || 'Conversación')} · #${c.id}</h3><div class="small muted">${esc(c.servicio || '')} ${c.usuario ? '· ' + esc(c.usuario) : ''} · ${fechaTxt(c.creado_en)}</div>` +
+    c.mensajes.map(m => {
+      let f = '';
+      if (Array.isArray(m.fuentes) && m.fuentes.length) f = '<div class="chips">' + m.fuentes.map(x => x.tipo === 'externa' ? `<span class="chip">🌐 ${esc(x.fuente)}: ${esc(x.detalle)}</span>` : `<span class="chip">[ID ${x.id}] ${esc(x.titulo)}</span>`).join('') + '</div>';
+      return `<div class="msg ${m.rol === 'usuario' ? 'me' : 'bot'}" style="max-width:100%;margin-top:8px">${rich(m.contenido)}${f}</div>`;
+    }).join('') + '</div>';
+}
+VIEWS.historial = async function () {
+  const admin = user.rol === 'admin';
+  const usuarios = admin ? await api('GET', '/usuarios') : [];
+  main.innerHTML = `
+    <h2>Historial de conversaciones</h2>
+    <p class="muted">${admin ? 'Como administrador ves las conversaciones de todos los usuarios.' : 'Tus conversaciones guardadas.'}</p>
+    <div class="card"><form id="hf" class="grid">
+      ${admin ? `<label>Usuario<select id="hu"><option value="">Todos</option>${usuarios.map(u => `<option value="${u.id}">${esc(u.nombre)}</option>`).join('')}</select></label>` : ''}
+      <label>Servicio<select id="hs">${svcOptions()}</select></label>
+      <label>Desde<input type="date" id="hd"></label>
+      <label>Hasta<input type="date" id="hh"></label>
+      <div class="actions"><button>Filtrar</button></div>
+    </form></div>
+    <div id="hl"></div><div id="hdet"></div>`;
+  async function cargar() {
+    const lista = await api('GET', '/reportes/conversaciones' + qs({
+      usuario_id: admin ? $('#hu').value : '', servicio: $('#hs').value, desde: $('#hd').value, hasta: $('#hh').value
+    }));
+    $('#hdet').innerHTML = '';
+    $('#hl').innerHTML = lista.length ? `<div class="card table-wrap"><table><tr><th>#</th><th>Fecha</th>${admin ? '<th>Usuario</th>' : ''}<th>Servicio</th><th>Título</th><th>Mensajes</th><th>Tokens</th><th></th></tr>` +
+      lista.map(c => `<tr><td>${c.id}</td><td>${fechaTxt(c.fecha)}</td>${admin ? `<td>${esc(c.usuario)}</td>` : ''}<td>${esc(c.servicio_nombre)}</td><td>${esc(c.titulo)}</td><td>${c.mensajes}</td><td>${fmt(c.tokens)}</td><td><button class="ghost" data-ver="${c.id}">Ver</button></td></tr>`).join('') + '</table></div>'
+      : '<div class="card muted">No hay conversaciones con esos filtros.</div>';
+  }
+  $('#hf').onsubmit = e => { e.preventDefault(); cargar().catch(err => toast(err.message, 'error')); };
+  $('#hl').addEventListener('click', async e => {
+    const b = e.target.closest('button[data-ver]');
+    if (!b) return;
+    try {
+      $('#hdet').innerHTML = mensajesHtml(await api('GET', '/reportes/conversaciones/' + b.dataset.ver));
+      $('#hdet').scrollIntoView({behavior: 'smooth'});
+    } catch (err) { toast(err.message, 'error'); }
+  });
+  await cargar();
+};
+
+/* ---------- consumo / reporte ---------- */
+VIEWS.consumo = async function () {
+  const admin = user.rol === 'admin';
+  const usuarios = admin ? await api('GET', '/usuarios') : [];
+  main.innerHTML = `
+    <h2>${admin ? 'Reporte de uso general' : 'Mi consumo de tokens'}</h2>
+    <div id="limite"></div>
+    <div class="card"><form id="rf" class="grid">
+      ${admin ? `<label>Usuario<select id="ru"><option value="">Todos</option>${usuarios.map(u => `<option value="${u.id}">${esc(u.nombre)}</option>`).join('')}</select></label>` : ''}
+      <label>Servicio<select id="rs">${svcOptions()}</select></label>
+      <label>Desde<input type="date" id="rd"></label>
+      <label>Hasta<input type="date" id="rh"></label>
+      <div class="actions"><button>Aplicar filtros</button><button type="button" class="ghost" id="rl">Limpiar</button></div>
+    </form></div>
+    <div id="rep"></div>`;
+  async function cargar() {
+    const f = {usuario_id: admin ? $('#ru').value : '', servicio: $('#rs').value, desde: $('#rd').value, hasta: $('#rh').value};
+    const [rep, det] = await Promise.all([
+      api('GET', '/reportes/consumo' + qs(f)),
+      api('GET', '/reportes/detalle' + qs({...f, limite: 100}))
+    ]);
+    if (!admin) {
+      const m = await api('GET', '/consumo/mio');
+      const pct = m.limite ? Math.min(100, Math.round(m.consumido / m.limite * 100)) : 100;
+      $('#limite').innerHTML = `<div class="card"><b>Límite asignado:</b> ${fmt(m.limite)} tokens · <b>Consumido:</b> ${fmt(m.consumido)} · <b>Restante:</b> ${fmt(m.restante)}<div class="bar" style="margin-top:8px"><i style="width:${pct}%"></i></div></div>`;
+    }
+    const t = rep.totales;
+    const max = Math.max(...rep.por_servicio.map(x => x.tokens_total), 1);
+    let h = `<div class="kpis">
+      <div class="kpi">Consultas<b>${fmt(t.consultas)}</b></div>
+      <div class="kpi">Tokens de entrada<b>${fmt(t.tokens_entrada)}</b></div>
+      <div class="kpi">Tokens de salida<b>${fmt(t.tokens_salida)}</b></div>
+      <div class="kpi">Tokens totales<b>${fmt(t.tokens_total)}</b></div></div>`;
+    h += '<div class="card table-wrap"><h3>Consultas y consumo acumulado por servicio</h3>' + (rep.por_servicio.length ?
+      '<table><tr><th>Servicio</th><th>Consultas</th><th>Entrada</th><th>Salida</th><th>Total</th><th></th></tr>' +
+      rep.por_servicio.map(s => `<tr><td>${esc(s.servicio_nombre)}</td><td>${fmt(s.consultas)}</td><td>${fmt(s.tokens_entrada)}</td><td>${fmt(s.tokens_salida)}</td><td><b>${fmt(s.tokens_total)}</b></td><td><div class="bar"><i style="width:${Math.round(s.tokens_total / max * 100)}%"></i></div></td></tr>`).join('') + '</table>'
+      : '<p class="muted">Sin datos para estos filtros.</p>') + '</div>';
+    if (admin) {
+      h += '<div class="card table-wrap"><h3>Por usuario</h3>' + (rep.por_usuario.length ?
+        '<table><tr><th>Usuario</th><th>Consultas</th><th>Tokens</th><th>Límite</th><th>Uso del límite</th></tr>' +
+        rep.por_usuario.map(u => `<tr><td>${esc(u.usuario)}</td><td>${fmt(u.consultas)}</td><td>${fmt(u.tokens_total)}</td><td>${fmt(u.limite_tokens)}</td><td>${u.limite_tokens ? Math.round(u.tokens_total / u.limite_tokens * 100) : 100}%</td></tr>`).join('') + '</table>'
+        : '<p class="muted">Sin datos.</p>') + '</div>';
+    }
+    h += '<div class="card table-wrap"><h3>Por día (con acumulado)</h3>' + (rep.por_dia.length ?
+      '<table><tr><th>Día</th><th>Consultas</th><th>Tokens</th><th>Acumulado</th></tr>' +
+      rep.por_dia.map(d => `<tr><td>${esc(d.dia)}</td><td>${fmt(d.consultas)}</td><td>${fmt(d.tokens_total)}</td><td>${fmt(d.tokens_acumulado)}</td></tr>`).join('') + '</table>'
+      : '<p class="muted">Sin datos.</p>') + '</div>';
+    h += '<div class="card table-wrap"><h3>Consultas realizadas (últimas 100)</h3>' + (det.length ?
+      `<table><tr><th>Fecha</th>${admin ? '<th>Usuario</th>' : ''}<th>Servicio</th><th>Entrada</th><th>Salida</th><th>Total</th></tr>` +
+      det.map(d => `<tr><td>${fechaTxt(d.fecha)}</td>${admin ? `<td>${esc(d.usuario)}</td>` : ''}<td>${esc(d.servicio_nombre)}</td><td>${fmt(d.tokens_entrada)}</td><td>${fmt(d.tokens_salida)}</td><td>${fmt(d.tokens_total)}</td></tr>`).join('') + '</table>'
+      : '<p class="muted">Sin consultas.</p>') + '</div>';
+    $('#rep').innerHTML = h;
+  }
+  $('#rf').onsubmit = e => { e.preventDefault(); cargar().catch(err => toast(err.message, 'error')); };
+  $('#rl').onclick = () => { $('#rf').reset(); cargar().catch(err => toast(err.message, 'error')); };
+  await cargar();
+};
+
+/* ---------- administración: usuarios ---------- */
+VIEWS.usuarios = async function () {
+  const lista = await api('GET', '/usuarios');
+  main.innerHTML = `
+    <h2>Usuarios y límites de tokens</h2>
+    <div class="card"><h3>Nuevo usuario</h3>
+      <form id="nu" class="grid">
+        <label>Nombre<input id="nn" required minlength="2" maxlength="100"></label>
+        <label>Correo<input id="ne" type="email" required></label>
+        <label>Contraseña<input id="np" type="password" required minlength="6" maxlength="72"></label>
+        <label>Rol<select id="nr"><option value="usuario">usuario</option><option value="admin">admin</option></select></label>
+        <label>Límite de tokens<input id="nl" type="number" min="0" value="20000" required></label>
+        <div class="actions"><button>Crear usuario</button></div>
+      </form></div>
+    <div class="card table-wrap"><table id="ut"><tr><th>ID</th><th>Nombre</th><th>Correo</th><th>Rol</th><th>Límite de tokens</th><th>Activo</th><th>Acciones</th></tr>` +
+    lista.map(u => `<tr data-id="${u.id}"><td>${u.id}</td><td><input class="n" value="${esc(u.nombre)}"></td><td><input class="e" value="${esc(u.email)}"></td>
+      <td><select class="r"><option ${u.rol === 'usuario' ? 'selected' : ''}>usuario</option><option ${u.rol === 'admin' ? 'selected' : ''}>admin</option></select></td>
+      <td><input class="l" type="number" min="0" value="${u.limite_tokens}"></td>
+      <td><input class="a" type="checkbox" ${u.activo ? 'checked' : ''}></td>
+      <td><div class="row"><button class="sv">Guardar</button><button class="ghost pw">Clave</button><button class="danger del">Eliminar</button></div></td></tr>`).join('') +
+    '</table></div>';
+  $('#nu').onsubmit = async e => {
+    e.preventDefault();
+    try {
+      await api('POST', '/usuarios', {nombre: $('#nn').value.trim(), email: $('#ne').value.trim(), password: $('#np').value, rol: $('#nr').value, limite_tokens: parseInt($('#nl').value, 10)});
+      toast('Usuario creado');
+      go('usuarios');
+    } catch (err) { toast(err.message, 'error'); }
+  };
+  $('#ut').addEventListener('click', async e => {
+    const b = e.target.closest('button');
+    if (!b) return;
+    const tr = b.closest('tr');
+    const id = tr.dataset.id;
+    try {
+      if (b.classList.contains('sv')) {
+        await api('PUT', '/usuarios/' + id, {
+          nombre: $('.n', tr).value.trim(), email: $('.e', tr).value.trim(), rol: $('.r', tr).value,
+          limite_tokens: parseInt($('.l', tr).value, 10), activo: $('.a', tr).checked
+        });
+        toast('Usuario actualizado');
+      } else if (b.classList.contains('pw')) {
+        const p = prompt('Nueva contraseña (mínimo 6 caracteres):');
+        if (!p) return;
+        await api('PUT', '/usuarios/' + id, {password: p});
+        toast('Contraseña actualizada');
+      } else if (b.classList.contains('del')) {
+        if (!confirm('¿Eliminar este usuario y todo su historial?')) return;
+        await api('DELETE', '/usuarios/' + id);
+        toast('Usuario eliminado');
+        go('usuarios');
+      }
+    } catch (err) { toast(err.message, 'error'); }
+  });
+};
+
+/* ---------- administración: servicios ---------- */
+VIEWS.servicios = async function () {
+  const lista = await api('GET', '/servicios');
+  main.innerHTML = `
+    <h2>Configuración de servicios de IA</h2>
+    <p class="muted">Un servicio desactivado desaparece del menú de los usuarios y la API lo rechaza con 403.</p>
+    <div class="card table-wrap"><table id="st"><tr><th>ID</th><th>Código</th><th>Nombre</th><th>Descripción</th><th>Activo</th><th></th></tr>` +
+    lista.map(s => `<tr data-id="${s.id}"><td>${s.id}</td><td>${esc(s.codigo)}</td><td><input class="n" value="${esc(s.nombre)}"></td><td><input class="d" value="${esc(s.descripcion)}"></td><td><input class="a" type="checkbox" ${s.activo ? 'checked' : ''}></td><td><button class="sv">Guardar</button></td></tr>`).join('') +
+    '</table></div>';
+  $('#st').addEventListener('click', async e => {
+    const b = e.target.closest('button.sv');
+    if (!b) return;
+    const tr = b.closest('tr');
+    try {
+      await api('PUT', '/servicios/' + tr.dataset.id, {nombre: $('.n', tr).value.trim(), descripcion: $('.d', tr).value.trim(), activo: $('.a', tr).checked});
+      toast('Servicio actualizado');
+      await cargarServicios();
+      document.querySelectorAll('#nav button').forEach(x => x.classList.toggle('active', x.dataset.id === 'servicios'));
+    } catch (err) { toast(err.message, 'error'); }
+  });
+};
+
+/* ---------- administración: catálogo ---------- */
+VIEWS.catalogo = async function () {
+  let editId = null, lista = [];
+  main.innerHTML = `
+    <h2>Catálogo de videojuegos</h2>
+    <p class="muted">Estos datos alimentan al chatbot RAG y a los agentes.</p>
+    <div class="card"><h3 id="ft">Nuevo videojuego</h3>
+      <form id="gf" class="grid">
+        <label>Título<input id="gt" required maxlength="150"></label>
+        <label>Género<input id="gg" required maxlength="40"></label>
+        <label>Plataforma<input id="gp" required maxlength="40"></label>
+        <label>Precio (USD)<input id="gpr" type="number" step="0.01" min="0" required></label>
+        <label>Stock<input id="gs" type="number" min="0" value="0" required></label>
+        <label>Año<input id="ga" type="number" min="1970" max="2100"></label>
+        <label class="full">Descripción<textarea id="gd" rows="2"></textarea></label>
+        <div class="actions"><button>Guardar</button><button type="button" class="ghost" id="gc">Cancelar edición</button></div>
+      </form></div>
+    <div class="card"><div class="row"><input id="gq" placeholder="Buscar por título…"><button class="ghost" id="gb">Buscar</button></div><div id="gl" class="table-wrap" style="margin-top:10px"></div></div>
+    <div id="gr"></div>`;
+  function limpiar() {
+    editId = null;
+    $('#gf').reset();
+    $('#ft').textContent = 'Nuevo videojuego';
+  }
+  async function cargar() {
+    lista = await api('GET', '/videojuegos' + qs({q: $('#gq').value.trim()}));
+    $('#gl').innerHTML = lista.length ? '<table><tr><th>ID</th><th>Título</th><th>Género</th><th>Plataforma</th><th>Precio</th><th>Stock</th><th>Año</th><th></th></tr>' +
+      lista.map(j => `<tr data-id="${j.id}"><td>${j.id}</td><td>${esc(j.titulo)}</td><td>${esc(j.genero)}</td><td>${esc(j.plataforma)}</td><td>${money(j.precio)}</td><td>${j.stock}</td><td>${j.anio ?? ''}</td><td><div class="row"><button class="ghost ed">Editar</button><button class="ghost rs">Reseñas</button><button class="danger del">Eliminar</button></div></td></tr>`).join('') + '</table>'
+      : '<p class="muted">No hay videojuegos.</p>';
+  }
+  async function verResenas(id) {
+    const j = await api('GET', '/videojuegos/' + id);
+    $('#gr').innerHTML = `<div class="card table-wrap"><h3>Reseñas de ${esc(j.titulo)}</h3>` + (j.resenas.length ?
+      '<table><tr><th>ID</th><th>Autor</th><th>Puntuación</th><th>Comentario</th><th></th></tr>' +
+      j.resenas.map(r => `<tr data-id="${r.id}"><td>${r.id}</td><td>${esc(r.autor)}</td><td>${r.puntuacion}/5</td><td>${esc(r.comentario)}</td><td><button class="danger delr">Eliminar</button></td></tr>`).join('') + '</table>'
+      : '<p class="muted">Sin reseñas.</p>') +
+      `<h3 style="margin-top:14px">Agregar reseña</h3><form id="rsf" class="grid">
+        <label>Autor<input id="ra" required maxlength="80"></label>
+        <label>Puntuación<select id="rp"><option>5</option><option>4</option><option>3</option><option>2</option><option>1</option></select></label>
+        <label class="full">Comentario<input id="rc"></label>
+        <div class="actions"><button>Agregar</button></div></form></div>`;
+    $('#rsf').onsubmit = async e => {
+      e.preventDefault();
+      try {
+        await api('POST', '/resenas', {videojuego_id: id, autor: $('#ra').value.trim(), puntuacion: parseInt($('#rp').value, 10), comentario: $('#rc').value.trim() || null});
+        toast('Reseña agregada');
+        verResenas(id);
+      } catch (err) { toast(err.message, 'error'); }
+    };
+    $('#gr').onclick = async e => {
+      const b = e.target.closest('button.delr');
+      if (!b || !confirm('¿Eliminar la reseña?')) return;
+      try {
+        await api('DELETE', '/resenas/' + b.closest('tr').dataset.id);
+        toast('Reseña eliminada');
+        verResenas(id);
+      } catch (err) { toast(err.message, 'error'); }
+    };
+    $('#gr').scrollIntoView({behavior: 'smooth'});
+  }
+  $('#gf').onsubmit = async e => {
+    e.preventDefault();
+    const body = {
+      titulo: $('#gt').value.trim(), genero: $('#gg').value.trim(), plataforma: $('#gp').value.trim(),
+      precio: parseFloat($('#gpr').value), stock: parseInt($('#gs').value, 10),
+      anio: $('#ga').value ? parseInt($('#ga').value, 10) : null, descripcion: $('#gd').value.trim() || null
+    };
+    try {
+      if (editId) await api('PUT', '/videojuegos/' + editId, body);
+      else await api('POST', '/videojuegos', body);
+      toast(editId ? 'Videojuego actualizado' : 'Videojuego creado');
+      limpiar();
+      await cargar();
+    } catch (err) { toast(err.message, 'error'); }
+  };
+  $('#gc').onclick = limpiar;
+  $('#gb').onclick = () => cargar().catch(err => toast(err.message, 'error'));
+  $('#gl').addEventListener('click', async e => {
+    const b = e.target.closest('button');
+    if (!b) return;
+    const id = parseInt(b.closest('tr').dataset.id, 10);
+    try {
+      if (b.classList.contains('ed')) {
+        const j = lista.find(x => x.id === id);
+        editId = id;
+        $('#ft').textContent = 'Editando: ' + j.titulo;
+        $('#gt').value = j.titulo; $('#gg').value = j.genero; $('#gp').value = j.plataforma;
+        $('#gpr').value = j.precio; $('#gs').value = j.stock; $('#ga').value = j.anio ?? ''; $('#gd').value = j.descripcion ?? '';
+        window.scrollTo({top: 0, behavior: 'smooth'});
+      } else if (b.classList.contains('rs')) {
+        await verResenas(id);
+      } else if (b.classList.contains('del')) {
+        if (!confirm('¿Eliminar este videojuego y sus reseñas?')) return;
+        await api('DELETE', '/videojuegos/' + id);
+        toast('Videojuego eliminado');
+        $('#gr').innerHTML = '';
+        await cargar();
+      }
+    } catch (err) { toast(err.message, 'error'); }
+  });
+  await cargar();
+};
+
+/* ---------- arranque ---------- */
+(async function () {
+  if (!token) return;
+  try { user = await api('GET', '/auth/me'); await mostrarApp(); }
+  catch (e) { cerrarLocal(); }
+})();
+</script>
+</body>
+</html>
