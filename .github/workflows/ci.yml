@@ -1,0 +1,70 @@
+# =====================================================
+# CI - Pruebas automatizadas (GitHub Actions)
+# =====================================================
+# En cada push o pull request a main:
+#   1. Se levanta una PostgreSQL 16 efímera (contenedor del propio Actions).
+#   2. Se ejecutan los scripts del proyecto (sql/01_schema.sql + crear_usuarios.py)
+#      para cargar el esquema y los datos de demostración.
+#   3. Se ejecuta la suite completa de pytest (unidad + integración).
+# La IA se SIMULA en las pruebas: no se consume cuota de Groq.
+# El despliegue a producción (CD) lo realiza Render automáticamente al hacer push.
+# =====================================================
+
+name: CI - Pruebas automatizadas
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  pruebas:
+    name: pytest + base de datos de prueba
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: videojuegos
+          POSTGRES_PASSWORD: videojuegos_ci
+          POSTGRES_DB: videojuegos_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U videojuegos"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+
+    env:
+      DATABASE_URL: postgresql://videojuegos:videojuegos_ci@localhost:5432/videojuegos_ci
+      JWT_SECRET: secreto_interno_de_pruebas_ci
+
+    defaults:
+      run:
+        working-directory: backend
+
+    steps:
+      - name: Descargar el código
+        uses: actions/checkout@v4
+
+      - name: Configurar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Instalar dependencias
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Crear la base de datos de prueba (scripts del proyecto)
+        run: |
+          python -c "import os, psycopg2; conn = psycopg2.connect(os.environ['DATABASE_URL']); conn.autocommit = True; cur = conn.cursor(); cur.execute(open('sql/01_schema.sql', encoding='utf-8').read()); conn.close(); print('Esquema y datos de demo cargados')"
+          python -m app.crear_usuarios
+
+      - name: Ejecutar pruebas automatizadas
+        run: python -m pytest -v
