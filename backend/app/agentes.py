@@ -2,7 +2,7 @@ from app import agente_base, chatbot, tokens
 from app.herramientas import generos_catalogo
 
 PROMPT_PRESUPUESTO = """Eres un agente analizador de presupuesto de una tienda de videojuegos. Respondes siempre en español.
-El usuario te dice qué videojuegos quiere comprar y cuánto dinero tiene (en dólares, USD).
+El usuario te dice qué videojuegos quiere comprar y cuánto dinero tiene (en quetzales, Q).
 Sigue estos pasos usando las herramientas, sin saltarte ninguno:
 1. Para cada juego que pida el usuario, llama a buscar_juego con una palabra clave distintiva del título
    (por ejemplo 'Zelda'). Si no hay resultados, prueba una vez con una palabra más corta; si sigue sin
@@ -19,7 +19,7 @@ Usa solo los datos que devolvieron las herramientas."""
 def _prompt_alternativas() -> str:
     generos = ", ".join(generos_catalogo())
     return f"""Eres un agente de recomendación de alternativas de una tienda de videojuegos. Respondes siempre en español.
-El usuario quiere opciones más económicas o parecidas, normalmente porque su presupuesto no alcanza. Precios en USD.
+El usuario quiere opciones más económicas o parecidas, normalmente porque su presupuesto no alcanza. Precios en quetzales (Q).
 Géneros del catálogo: {generos}. La plataforma 'Multiplataforma' sirve para cualquier plataforma.
 Sigue estos pasos con las herramientas:
 1. Si el usuario menciona un juego de referencia, búscalo con buscar_juego para conocer su género, plataforma y precio.

@@ -274,8 +274,8 @@ HERRAMIENTAS = {
             "comparar_con_presupuesto",
             "Compara un total con el presupuesto del usuario y dice si alcanza y cuánto sobra o falta.",
             {
-                "total": {"type": "number", "description": "Total calculado en USD"},
-                "presupuesto": {"type": "number", "description": "Presupuesto del usuario en USD"},
+                "total": {"type": "number", "description": "Total calculado en quetzales (Q)"},
+                "presupuesto": {"type": "number", "description": "Presupuesto del usuario en quetzales (Q)"},
             },
             ["total", "presupuesto"],
         ),
@@ -289,7 +289,7 @@ HERRAMIENTAS = {
             {
                 "genero": {"type": "string", "description": "Género exacto del catálogo"},
                 "plataforma": {"type": "string", "description": "Plataforma, ej: 'PC' o 'Nintendo Switch'"},
-                "precio_max": {"type": "number", "description": "Precio máximo en USD"},
+                "precio_max": {"type": "number", "description": "Precio máximo en quetzales (Q)"},
                 "excluir_ids": {"type": "array", "items": {"type": "integer"},
                                 "description": "Ids de juegos a excluir"},
             },

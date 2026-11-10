@@ -55,7 +55,7 @@ def resumen_catalogo() -> str:
         cur.execute("SELECT DISTINCT genero FROM videojuegos ORDER BY genero")
         generos = [f["genero"] for f in cur.fetchall()]
     return (f"RESUMEN DEL CATÁLOGO: {r['total']} videojuegos. Géneros: {', '.join(generos)}. "
-            f"Precios entre ${r['minimo']} y ${r['maximo']} (USD).")
+            f"Precios entre Q{r['minimo']} y Q{r['maximo']} (quetzales).")
 
 
 def construir_contexto(juegos: list) -> str:
@@ -64,7 +64,7 @@ def construir_contexto(juegos: list) -> str:
         partes.append("No se encontraron videojuegos relacionados con la pregunta.")
     for j in juegos:
         texto = (f"[ID {j['id']}] {j['titulo']} | Género: {j['genero']} | Plataforma: {j['plataforma']} | "
-                 f"Precio: ${j['precio']} | Stock: {j['stock']} | Año: {j['anio']}\n"
+                 f"Precio: Q{j['precio']} | Stock: {j['stock']} | Año: {j['anio']}\n"
                  f"Descripción: {j['descripcion']}")
         if j["promedio"] is not None:
             texto += f"\nReseñas: promedio {j['promedio']}/5 ({j['total_resenas']} reseñas)."
